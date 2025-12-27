@@ -1,0 +1,33 @@
+{
+  "generatedAt": "2025-12-27T00:00:00Z",
+  "services": [
+    {
+      "id": "tc",
+      "name": "Tipo de cambio (TC)",
+      "status": "UNKNOWN",
+      "latencyMs": null,
+      "url": "https://api.hacienda.go.cr/indicadores/tc/dolar"
+    },
+    {
+      "id": "cabys",
+      "name": "CABYS",
+      "status": "UNKNOWN",
+      "latencyMs": null,
+      "url": "https://api.hacienda.go.cr/fe/cabys?q=arroz&top=1"
+    },
+    {
+      "id": "ae",
+      "name": "Contribuyentes (AE)",
+      "status": "UNKNOWN",
+      "latencyMs": null,
+      "url": "https://api.hacienda.go.cr/fe/ae?identificacion=2100042005"
+    },
+    {
+      "id": "ex",
+      "name": "Exoneraciones (EX)",
+      "status": "UNKNOWN",
+      "latencyMs": null,
+      "url": "https://api.hacienda.go.cr/fe/ex"
+    }
+  ]
+}

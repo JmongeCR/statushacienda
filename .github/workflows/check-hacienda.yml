@@ -1,0 +1,109 @@
+name: Check Hacienda + Update status.json
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *" # cada 5 min (GitHub no garantiza cada 1 min)
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "check-hacienda"
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Generate status.json (safe JSON)
+        run: |
+          node - <<'NODE'
+          const fs = require("fs");
+
+          async function ping(url) {
+            const start = Date.now();
+            try {
+              const res = await fetch(url, { method: "GET", redirect: "follow" });
+              const ms = Date.now() - start;
+              return { ok: res.ok, statusCode: res.status, ms };
+            } catch (e) {
+              return { ok: false, statusCode: null, ms: null, error: String(e?.message || e) };
+            }
+          }
+
+          (async () => {
+            const now = new Date().toISOString();
+
+            // 1) TC (API Hacienda)
+            const tcUrl = "https://api.hacienda.go.cr/indicadores/tc/dolar";
+            const tc = await ping(tcUrl);
+
+            // 2) “Estado FE” (vos querés el status de la página externa)
+            // OJO: esto NO es un API oficial; es un monitor web.
+            // Igual lo podemos "pingear" para saber si responde.
+            const feStatusUrl = "https://apis.gometa.org/status/";
+            const fe = await ping(feStatusUrl);
+
+            const json = {
+              generatedAt: now,
+              services: [
+                {
+                  id: "fe",
+                  name: "Facturación Electrónica (Recepción)",
+                  status: fe.ok ? "UP" : "DOWN",
+                  latencyMs: fe.ms,
+                  url: feStatusUrl
+                },
+                {
+                  id: "tc",
+                  name: "Tipo de cambio (TC)",
+                  status: tc.ok ? "UP" : "DOWN",
+                  latencyMs: tc.ms,
+                  url: tcUrl
+                }
+              ],
+              tools: {
+                cabys: {
+                  name: "Búsqueda CABYS",
+                  urlTemplate: "https://api.hacienda.go.cr/fe/cabys?q={query}&top=10",
+                  example: "https://api.hacienda.go.cr/fe/cabys?q=arroz&top=1"
+                },
+                ae: {
+                  name: "Consulta contribuyente (AE)",
+                  urlTemplate: "https://api.hacienda.go.cr/fe/ae?identificacion={id}",
+                  example: "https://api.hacienda.go.cr/fe/ae?identificacion=2100042005"
+                }
+              }
+            };
+
+            fs.writeFileSync("web/public/status.json", JSON.stringify(json, null, 2) + "\n", "utf8");
+            console.log("✅ web/public/status.json actualizado:", now);
+          })();
+          NODE
+
+      - name: Commit changes (if any)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add web/public/status.json
+
+          if git diff --cached --quiet; then
+            echo "No hay cambios en status.json"
+            exit 0
+          fi
+
+          git commit -m "Update status.json [bot]"
+          git push

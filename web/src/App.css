@@ -1,0 +1,112 @@
+:root{
+  --bg:#0b1220;
+  --panel:#0f1b2e;
+  --panel2:#0b1627;
+  --text:#e7eefc;
+  --muted:#9bb0d1;
+  --up:#22c55e;
+  --down:#ef4444;
+  --border: rgba(255,255,255,.08);
+}
+
+*{ box-sizing:border-box; }
+body{
+  margin:0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Apple Color Emoji","Segoe UI Emoji";
+  background: radial-gradient(1200px 600px at 20% 0%, rgba(59,130,246,.25), transparent 60%),
+              radial-gradient(900px 500px at 90% 10%, rgba(34,197,94,.18), transparent 55%),
+              var(--bg);
+  color:var(--text);
+}
+
+.page{
+  max-width:1200px;
+  margin:0 auto;
+  padding:48px 32px 56px;
+}
+
+
+.header{
+  display:flex;
+  gap:24px;
+  align-items:flex-start;
+  justify-content:space-between;
+  margin-bottom:36px;
+}
+
+
+h1{ margin:0; font-size:32px; letter-spacing:.2px; }
+.subtitle{ margin:6px 0 0; color:var(--muted); max-width:720px; }
+
+.overall{
+  background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px 14px;
+  min-width:230px;
+  text-align:right;
+  margin-top: 8px;
+}
+
+.overallTitle{ font-weight:700; }
+.overallMeta{ margin-top:6px; color:var(--muted); font-size:13px; }
+
+.grid{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap:22px;
+}
+
+
+.card{
+  background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.02));
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:20px;
+  transition: transform .15s ease, box-shadow .15s ease;
+
+}
+
+.card:hover{
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0,0,0,.25);
+}
+
+
+.cardTop{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
+}
+
+.serviceName{ font-weight:650; }
+
+.badge{
+  font-weight:800;
+  font-size:12px;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--border);
+}
+.badge.up{ color:var(--up); background: rgba(34,197,94,.12); border-color: rgba(34,197,94,.25); }
+.badge.down{
+  color: var(--down);
+  background: rgba(239,68,68,.16);
+  border-color: rgba(239,68,68,.35);
+}
+
+.meta{
+  display:flex;
+  gap:12px;
+  justify-content:space-between;
+}
+.metaLabel{ color:var(--muted); font-size:12px; }
+.metaValue{ margin-top:4px; font-size:14px; }
+
+.footer{
+  margin-top:32px;
+  color:var(--muted);
+  font-size:12px;
+}

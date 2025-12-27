@@ -1,0 +1,86 @@
+name: Check Hacienda FE status
+
+on:
+  schedule:
+    - cron: "*/1 * * * *" # cada 1 minuto (ajustá si querés)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: "check-hacienda"
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate status.json
+        shell: bash
+        run: |
+          python - <<'PY'
+          import json, time, urllib.request, urllib.error
+
+          services = [
+            {
+              "id": "validacion",
+              "name": "FE Validación (Recepción)",
+              "url": "https://api.hacienda.go.cr/fe/validacion",
+            },
+            # Si querés más endpoints de FE, agregalos aquí:
+            # { "id":"otro", "name":"...", "url":"https://api.hacienda.go.cr/fe/..." },
+          ]
+
+          out = {
+            "generatedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "services": []
+          }
+
+          def check(url: str, timeout=10):
+            t0 = time.time()
+            req = urllib.request.Request(url, method="GET")
+            try:
+              with urllib.request.urlopen(req, timeout=timeout) as resp:
+                code = resp.getcode()
+              latency_ms = int((time.time() - t0) * 1000)
+              status = "UP" if 200 <= code < 400 else "DOWN"
+              return status, latency_ms
+            except Exception:
+              latency_ms = int((time.time() - t0) * 1000)
+              return "DOWN", latency_ms
+
+          for s in services:
+            status, latency = check(s["url"])
+            out["services"].append({
+              "id": s["id"],
+              "name": s["name"],
+              "status": status,
+              "latencyMs": latency,
+              "url": s["url"]
+            })
+
+          with open("web/public/status.json", "w", encoding="utf-8") as f:
+            json.dump(out, f, ensure_ascii=False, indent=2)
+
+          print("Wrote web/public/status.json")
+          PY
+
+      - name: Commit & push if changed
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add web/public/status.json
+          git commit -m "Update status.json (Hacienda FE)"
+          git push

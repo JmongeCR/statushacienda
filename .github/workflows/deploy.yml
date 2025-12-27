@@ -1,0 +1,107 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build site
+        run: npm run build
+
+      # Genera status.json dentro de dist (esto es lo que Pages publica)
+      - name: Generate status.json
+        run: |
+          set -e
+
+          TS=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          check() {
+            NAME="$1"
+            URL="$2"
+
+            START=$(date +%s%3N)
+            CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 12 "$URL" || echo "000")
+            END=$(date +%s%3N)
+            LAT=$((END-START))
+
+            if [[ "$CODE" =~ ^2 ]]; then
+              STATUS="UP"
+            else
+              STATUS="DOWN"
+              LAT="null"
+            fi
+
+            echo "{\"name\":\"$NAME\",\"status\":\"$STATUS\",\"latencyMs\":$LAT,\"url\":\"$URL\"}"
+          }
+
+          TC_URL="https://api.hacienda.go.cr/indicadores/tc/dolar"
+          CABYS_URL="https://api.hacienda.go.cr/fe/cabys?q=arroz&top=1"
+          AE_URL="https://api.hacienda.go.cr/fe/ae"
+          EX_URL="https://api.hacienda.go.cr/fe/ex"
+
+          S1=$(check "Tipo de cambio (TC)" "$TC_URL")
+          S2=$(check "CABYS" "$CABYS_URL")
+          S3=$(check "Contribuyentes (AE)" "$AE_URL")
+          S4=$(check "Exoneraciones (EX)" "$EX_URL")
+
+          cat > dist/status.json <<EOF
+          {
+            "generatedAt": "$TS",
+            "services": [
+              { "id": "tc", $S1 },
+              { "id": "cabys", $S2 },
+              { "id": "ae", $S3 },
+              { "id": "ex", $S4 }
+            ]
+          }
+          EOF
+
+          echo "status.json generado:"
+          cat dist/status.json
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
